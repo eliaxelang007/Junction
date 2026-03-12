@@ -1,5 +1,5 @@
 name: junction
-description: This is a cross platform filesystem library that's designed to make it easy to work in both web and native environments!
+description: This is a library that provides a unified API for working with the filesystem in both web and native environments!
 version: 1.0.0
 # repository: https://github.com/my_org/my_repo
 

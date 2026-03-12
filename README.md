@@ -1,20 +1,29 @@
-Later on, this will be a cross platform file library design to work specifically for the web and natively!
+This is a library that provides a unified API for working with the filesystem in both web and native environments!
 
 ## Features
 
-* Web file access (to the extent that file access can be provided)
-* Native file access
+This library provides
 
-Both with a similar API!
+* file name and file path validation,
+* file and folder handles,
+* file and folder reading, and
+* file and folder writing
+
+with a unified API that limits you to the web platform but provides
+"slots" where you can use the more robust native functionality!
 
 ## Getting started
 
-Install this package!
+To get started, install this package by writing
+
+```bash
+dart pub add junction
+```
+
+And that's all you need to do!
 
 ## Usage
 
-TBD! 
+Check out the documentation page at
 
-## Additional information
-
-Originally, this was a part of a larger project where I was trying to build a visual novel system.
+https://pub.dev/documentation/junction/latest/
