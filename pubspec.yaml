@@ -1,7 +1,7 @@
 name: junction
-description: "A new Flutter package project."
-version: 0.0.1
-homepage:
+description: This is a library that provides a unified API for working with the filesystem in both web and native environments!
+version: 1.0.1
+homepage: https://github.com/eliaxelang007/Junction
 
 environment:
   sdk: ^3.10.4
