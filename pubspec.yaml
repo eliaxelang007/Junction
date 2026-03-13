@@ -1,6 +1,6 @@
 name: junction
 description: This is a library that provides a unified API for working with the filesystem in both web and native environments!
-version: 1.0.1
+version: 1.0.2
 homepage: https://github.com/eliaxelang007/Junction
 
 environment:
@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  result_type: ^1.0.0
+  # result_type: ^1.0.0
   path: ^1.9.1
   cross_file: ^0.3.5+2
   file_selector: ^1.1.0
