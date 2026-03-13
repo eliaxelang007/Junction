@@ -1,85 +1,272 @@
-// import "../sealer.dart";
+import 'package:result_type/result_type.dart';
+import "package:path/path.dart" as p;
+import "dart:typed_data";
+import "dart:convert";
+import "dart:io";
+
+sealed class CrossFilesystemData {}
+
+typedef CrossFilesystemItem<Data extends CrossFilesystemData> =
+    MapEntry<CrossFilesystemName, Data>;
+
+class CrossFileData extends CrossFilesystemData {
+  final Uint8List bytes;
+
+  CrossFileData({required this.bytes});
+
+  static CrossFileData fromJson(Object? json) {
+    return CrossFileData(bytes: utf8.encode(jsonEncode(json)));
+  }
+
+  dynamic toJson() {
+    return jsonDecode(utf8.decode(bytes));
+  }
+}
+
+extension type CrossFile._(CrossFilesystemItem<CrossFileData> _file)
+    implements CrossFilesystemItem<CrossFileData> {
+  factory CrossFile({
+    required CrossFilesystemName name,
+    required CrossFileData data,
+  }) {
+    return CrossFile._(CrossFilesystemItem<CrossFileData>(name, data));
+  }
+}
+
+typedef CrossFolder = MapEntry<CrossFilesystemName, CrossFolderData>;
+
+class CrossFolderData extends CrossFilesystemData {
+  final CrossFolderChildren children;
+
+  CrossFolderData({required this.children});
+}
+
+extension type CrossFolderChildren(
+  Map<CrossFilesystemName, CrossFilesystemData> _children
+)
+    implements Map<CrossFilesystemName, CrossFilesystemData> {}
+
+enum CrossPathError implements Exception {
+  empty("A filesystem path can't be empty!");
+
+  final String message;
+
+  const CrossPathError(this.message);
+
+  @override
+  String toString() => message;
+}
+
+extension type CrossPath._(List<CrossFilesystemName> pathElements)
+    implements List<CrossFilesystemName> {
+  static Result<(), CrossPathError> _validate(
+    List<CrossFilesystemName> path,
+  ) {
+    if (path.isEmpty) {
+      return Failure(CrossPathError.empty);
+    }
+
+    return Success(());
+  }
+
+  static Result<CrossPath, CrossPathError> create(
+    List<CrossFilesystemName> path,
+  ) {
+    return _validate(path).map((_) => CrossPath._(path));
+  }
+
+  String asString() {
+    return p.joinAll(pathElements);
+  }
+}
+
+/* + Main API + */
+
+enum CrossReadError implements Exception {} // TODO
 
 sealed class CrossReadHandle {
-	Future<Result<FilesystemItem, /* Some error type */>> read(); // Something like that?
+	Future<Result<CrossFilesystemItem, CrossReadError>> read();
 }
 
+// enum CrossReadHandleError implements Exception {} // TODO
+
+
+/// Normally, the user will only interact with [CrossReadHandleRequest] through [showOpenFilePicker].
+/// However, if a native user just wanted to get a file path from [showOpenFilePicker],
+/// They could just write
+/// 
+/// ```
+/// CrossReadHandleRequest request = showOpenFilePicker();
+///
+/// if (request is NativeHandleRequest) {
+///   // Do something with [request.path]
+/// }
+/// ```
+///
+/// Which abstracts away the platform most of the time but still allows for specific platform handling!
 sealed class CrossReadHandleRequest {
-	/*
-	Since the open file dialog already gives you a file handle on web, it should just return that wrapped in [WebReadHandle].
-	For native, it should give you `dart:io`'s analog for linux file descriptors, and wrap it in [NativeReadHandle]! 
-	*/
-	Future<Result<CrossReadHandle, /* Some error type */>> handle() async;
+	Future<CrossReadHandle> handle();
 }
 
-/* 
-Normally, the user will only interact with CrossReadhandleRequest.
-But, if a native user wants to get access to the file's path for example,
-the could just go
-
-if (handle is NativeReadRequest) {
-	// Do something with [handle.path]
-}
-
-Which abstracts away the platform most of the time but still allows for specific platform handling!
-*/
-class WebHandleRequest extends CrossReadHandleRequest { 
-	final WebHandle handle; // The web's [showOpenFilePicker] function already gives us a file handle, so the request object just stores it for later.
+/// [showOpenFilePicker](https://developer.mozilla.org/en-US/docs/Web/API/Window/showOpenFilePicker) 
+/// already gives you a file handle on web, so a [WebHandleRequest] is just a newtype wrapper for it 
+/// that implements [CrossReadHandleRequest].
+class WebHandleRequest extends CrossReadHandleRequest {
+	final WebReadHandle webHandle; // The web's [showOpenFilePicker] function already gives us a file handle, so the request object just stores it for later.
 	
-	/* Can we make it so that this is still available to import even in native environments, but it just throws errors when it's used? */
+	WebHandleRequest({required this.webHandle});
+
+  @override
+  Future<CrossReadHandle> handle() {
+    return Future.syncValue(webHandle);
+  }
 }
+
 class NativeHandleRequest extends CrossReadHandleRequest {
-	final Path path;
-	
-	/* Can we make it so that this is still available to import even in web environments, but it just throws errors when it's used? */
+	final CrossPath path;
+
+  NativeHandleRequest({required this.path});
+
+  @override
+  Future<CrossReadHandle> handle() async {
+    final stringPath = path.asString();
+    final type = await FileSystemEntity.type(stringPath);
+
+    final filesystemEntity = switch (type) {
+      FileSystemEntityType.file => File(stringPath),
+      FileSystemEntityType.directory => Directory(stringPath),
+      FileSystemEntityType.notFound => throw FileSystemException('Entity not found', stringPath),
+      _ => throw UnsupportedError('Unsupported file system entity type')
+    };
+
+    return NativeReadHandle(entity: filesystemEntity);
+  }
 }
-/**/
 
-CrossReadHandleRequest showOpenFilePicker() {}
+CrossReadHandleRequest showOpenFilePicker() {} // TODO
 
-/* These two types should also be hidden, and users will only normally interact with CrossFilesystemHandle. */
-class WebReadHandle extends CrossReadHandle {}
-class NativeReadHandle extends CrossReadHandle {}
-/**/
+class WebReadHandle extends CrossReadHandle {
+  @override
+  Future<Result<CrossFilesystemItem<CrossFilesystemData>, CrossReadError>> read() {
+    // TODO: implement read
+    throw UnimplementedError();
+  }
+}
 
-CrossReadHandle handle = (await showOpenFilePicker().handle()).unwrap();
 
-// I treat Files like MapEntry<String, Uint8List> where the string is the filename and the Uint8List is the file data;
-// I treat folders like MapEntry<String, Map<String, Uint8List>> where the string is the foldername and the Map<String, Folder | File> is its children!
+class NativeReadHandle extends CrossReadHandle {
+  final FileSystemEntity entity;
 
-FilesystemItem file = /* await */ handle.read().unwrap();
-FilesystemItem folder = /* await */ handle.read().unwrap();
-
-// File and folder are both [FilesystemItem]s
+  NativeReadHandle({required this.entity});
+  
+  @override
+  Future<Result<CrossFilesystemItem<CrossFilesystemData>, CrossReadError>> read() {
+    // TODO: implement read
+    throw UnimplementedError();
+  }
+}
 
 sealed class CrossWriteHandleRequest {
-	Future<Result<CrossWriteHandle, /* Some error type */>> handle() async;
+	Future<Result<CrossWriteHandle, /* Some error type */>> handle();
 }
 
 class WebWriteHandleRequest extends CrossWriteHandleRequest {}
 class NativeWriteHandleRequest extends CrossWriteHandleRequest {
-	final Path writeTo; 
+	final CrossPath writeTo; 
 }
-
-sealed class CrossWriteHandle {
-	Future<Result<void, /* Some error type */>> write(FilesystemItem item) async;
-}
-
-class WebWriteHandle extends CrossWriteHandle {}
-class NativeWriteHandle extends CrossWriteHandle {}
 
 CrossWriteHandleRequest showSaveFilePicker() {}
 
-CrossWriteHandle handle = (await showSaveFilePicker().handle()).unwrap();
+enum CrossWriteError implements Exception {}
 
-handle.write(file); // OR
-handle.write(folder);
+sealed class CrossWriteHandle {
+	Future<Result<(), CrossWriteError>> write(CrossFilesystemItem item);
+}
 
-/*
-If someone wants to write a file to a specific folder on native, they can just
+class WebWriteHandle extends CrossWriteHandle {
+  @override
+  Future<Result<(), CrossWriteError>> write(CrossFilesystemItem<CrossFilesystemData> item) {
+    // TODO: implement write
+    throw UnimplementedError();
+  }
+}
 
-NativeWriteRequest(Path.fromString("./some/file/location").unwrap()).write(file);
+/// If someone wants to write a file to a specific folder on native, they can just
+/// [NativeWriteHandle(Path.fromString("./some/file/location").unwrap()).write(file);]
+/// Which would throw an unsupported error on web.
+class NativeWriteHandle extends CrossWriteHandle {
+  @override
+  Future<Result<(), CrossWriteError>> write(CrossFilesystemItem<CrossFilesystemData> item) {
+    // TODO: implement write
+    throw UnimplementedError();
+  }
+}
 
-Which would throw an unsupported error on web.
-*/
-```
+/* - Main API - */
+
+/// Windows's max filesystem item name length is 255 characters.
+const int maxPath = 255;
+
+enum CrossFilesystemNameError implements Exception {
+  empty("A filename can't be empty!"),
+  exceedingLength("A filename can't be longer than $maxPath characters!"),
+  // nonAscii("A filename has to be valid ascii!"),
+  forbiddenCharacters(
+    "A filename can't contain '<', '>', ':', '\"', '/', '\\', '|', '?', or '*'!",
+  ),
+  // nonLowercase("A filename can't have any case other than lowercase!"),
+  beginningOrEndingWithWhitespace(
+    "A filename can't start or end with whitespace!",
+  ),
+  endingPeriod("A filename can't end with a period!");
+
+  final String message;
+
+  const CrossFilesystemNameError(this.message);
+
+  @override
+  String toString() => message;
+}
+
+extension type const CrossFilesystemName._(String fullFilename)
+    implements String {
+  static Result<(), CrossFilesystemNameError> _validate(String fullFilename) {
+    if (fullFilename.isEmpty) {
+      return Failure(CrossFilesystemNameError.empty);
+    }
+
+    if (fullFilename.length > maxPath) {
+      return Failure(CrossFilesystemNameError.exceedingLength);
+    }
+
+    if (fullFilename.endsWith('.')) {
+      return Failure(CrossFilesystemNameError.endingPeriod);
+    }
+
+    // if (fullFilename.codeUnits.any((c) => c < 32 || c > 126)) {
+    //   return Failure(CrossFilesystemNameError.nonAscii);
+    // }
+
+    if (fullFilename.contains(RegExp(r'[<>:"/\\|?*]'))) {
+      return Failure(CrossFilesystemNameError.forbiddenCharacters);
+    }
+
+    // if (fullFilename != fullFilename.toLowerCase()) {
+    //   return Failure(CrossFilesystemNameError.nonLowercase);
+    // }
+
+    if (fullFilename.trim().length != fullFilename.length) {
+      return Failure(CrossFilesystemNameError.beginningOrEndingWithWhitespace);
+    }
+
+    return Success(());
+  }
+
+  static Result<CrossFilesystemName, CrossFilesystemNameError> create(
+    String fullFilename,
+  ) {
+    return _validate(
+      fullFilename,
+    ).map((_) => CrossFilesystemName._(fullFilename));
+  }
+}
