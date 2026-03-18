@@ -50,6 +50,10 @@ class NativeReadHandle extends CrossReadHandle {
 class WebReadHandle extends CrossReadHandle {
     /* ... */
 }
+
+class WebOpfsReadHandle extends CrossReadHandle {
+    /* ... */
+}
 ```
 
 ```dart
@@ -65,6 +69,10 @@ class NativeWriteHandle extends CrossWriteHandle {
 }
 
 class WebWriteHandle extends CrossWriteHandle {
+    /* ... */
+}
+
+class WebOpfsReadHandle extends CrossWriteHandle {
     /* ... */
 }
 ```
