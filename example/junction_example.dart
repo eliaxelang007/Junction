@@ -3,6 +3,7 @@ import 'package:junction/junction.dart';
 Future<void> webWrite() async {
   final newFile = CrossInMemoryFile(
     name: CrossFilesystemName("settings.json"),
+    // This line is convenience for CrossFileData(bytes: utf8.encode(jsonEncode(json)))
     data: CrossFileData.fromJson({"theme": "dark", "version": "1.0.0"}),
   );
 
@@ -36,6 +37,7 @@ Future<void> nativeWrite() async {
 
   final mySettings = CrossInMemoryFile(
     name: CrossFilesystemName("settings.json"),
+    // This line is convenience for CrossFileData(bytes: utf8.encode(jsonEncode(json)))
     data: CrossFileData.fromJson({"theme": "dark", "version": "1.0.0"}),
   );
 
@@ -67,6 +69,7 @@ Future<void> opfsWrite() async {
 
   final mySettings = CrossInMemoryFile(
     name: CrossFilesystemName("settings.json"),
+    // This line is convenience for CrossFileData(bytes: utf8.encode(jsonEncode(json)))
     data: CrossFileData.fromJson({"theme": "dark", "version": "1.0.0"}),
   );
 
