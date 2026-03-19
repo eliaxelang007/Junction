@@ -7,6 +7,8 @@ import 'package:web/web.dart';
 
 import 'shared.dart';
 
+const Platform? detectedPlatform = Platform.web;
+
 const String _nativeUnsupportedMessage =
     "Your program is running on the web, so it can only use web functionality!";
 

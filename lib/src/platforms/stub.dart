@@ -1,5 +1,7 @@
 import "shared.dart";
 
+const Platform? detectedPlatform = null;
+
 const String _stubErrorMessage =
     "You're using an implementation from the stub file! This either means that you're on a platform that we don't support or that something has gone wrong.";
 

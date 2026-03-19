@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'shared.dart';
 
+const Platform? detectedPlatform = Platform.native;
+
 const String _webUnsupportedMessage =
     "Your program is running on a native platform, so it can only use native functionality!";
 

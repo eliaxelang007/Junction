@@ -1,12 +1,19 @@
 ## Junction
 
-Junction is a library that provides an API for working with the filesystem in both web and native environments!
-
-> Check out the package `junction_selector` too! It's a library that gives you file selectors for Flutter that integrates well with `junction`.
+Junction is a Dart library that provides an API for working with the native filesystem, the web filesystem, and web origin private file filesystem (OPFS)!
 
 ## Usage
 
 > WARNING: These snippets are still untested!
+
+### Platform Detection
+
+```dart
+detectedPlatform // Depending on where you're running your code, this constant could be [Platform.web], [Platform.native], or [null].
+
+// If you try to use functionality that doesn't work on the platform you're running on, 
+// `junction` throws an error.
+```
 
 ### Web Write
 

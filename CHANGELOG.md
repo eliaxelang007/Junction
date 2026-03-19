@@ -1,3 +1,7 @@
+# 1.1.3
+
+- Added [detectedPlatform] constant that helps you determine what platform you're running on.
+
 # 1.1.2
 
 - Edited readme.

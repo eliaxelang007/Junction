@@ -2,6 +2,8 @@ import "dart:convert";
 import "dart:typed_data";
 import "package:path/path.dart" as p;
 
+enum Platform { native, web }
+
 /* + Filesystem Names + */
 /// Windows's max filesystem item name length is 255 characters.
 const int maxPath = 255;
