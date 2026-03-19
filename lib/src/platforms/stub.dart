@@ -31,8 +31,10 @@ class WebOpfsReadHandle extends CrossReadHandle<CrossFilesystemData> {
 }
 
 class WebReadHandle extends CrossReadHandle<CrossFileData> {
-  // This factory is for the public interface only! It'll have a private constructor in the actual implementation.
-  factory WebReadHandle() {
+  static Future<List<WebReadHandle>> showOpenFileDialog({
+    List<XTypeGroup>? accept,
+    bool multiple = false,
+  }) async {
     throw UnimplementedError(_stubErrorMessage);
   }
 
@@ -71,8 +73,9 @@ class WebOpfsWriteHandle extends CrossWriteHandle<CrossFilesystemData> {
 }
 
 class WebWriteHandle extends CrossWriteHandle<CrossFileData> {
-  // This factory is for the public interface only! It'll have a private constructor in the actual implementation.
-  factory WebWriteHandle() {
+  static Future<void> showSaveFileDialog(
+    CrossFilesystemItem<CrossFileData> item,
+  ) {
     throw UnimplementedError(_stubErrorMessage);
   }
 

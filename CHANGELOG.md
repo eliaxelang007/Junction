@@ -1,3 +1,7 @@
+# 1.1.0
+
+- A major design overhaul. It's back to being a purely Dart package and it now provides support for the web, web OPFS, and native platforms.
+
 # 1.0.2
 
 - This might be working!

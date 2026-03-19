@@ -11,7 +11,7 @@ enum CrossFilesystemNameError implements Exception {
   exceedingLength("A filename can't be longer than $maxPath characters!"),
   // nonAscii("A filename has to be valid ascii!"),
   forbiddenCharacters(
-    "A filename can't contain '<', '>', ':', '\"', '/', '\\', '|', '?', or '*'!",
+    "A filename can't contain '<', '>', '\"', '/', '\\', '|', '?', or '*'!", // ':',
   ),
   // nonLowercase("A filename can't have any case other than lowercase!"),
   beginningOrEndingWithWhitespace(
@@ -48,7 +48,8 @@ extension type const CrossFilesystemName._(String fullFilename)
     //   return CrossFilesystemNameError.nonAscii;
     // }
 
-    if (fullFilename.contains(RegExp(r'[<>:"/\\|?*]'))) {
+    if (fullFilename.contains(RegExp(r'[<>"/\\|?*]'))) {
+      // ':' excluded to allow for "C:" in file paths.
       return CrossFilesystemNameError.forbiddenCharacters;
     }
 
@@ -186,13 +187,14 @@ extension type CrossPath._(List<CrossFilesystemName> pathElements)
     return CrossPath._(pathElements + trailing.pathElements);
   }
 
-  static CrossPath fromString(String maybePath) {
+  static CrossPath fromStrings(Iterable<String> path) {
     return CrossPath(
-      p
-          .split(maybePath)
-          .map((maybePart) => CrossFilesystemName(maybePart))
-          .toList(),
+      path.map((maybePart) => CrossFilesystemName(maybePart)).toList(),
     );
+  }
+
+  static CrossPath fromString(String maybePath) {
+    return CrossPath.fromStrings(p.split(maybePath));
   }
 }
 /* - Paths - */
@@ -211,13 +213,85 @@ class JunctionException implements Exception {
   }
 }
 
-/// This is a version of assert that doesn't get disabled in production.
-/// See https://dart.dev/language/error-handling#assert
-void enforce(bool condition, [String? message]) {
-  if (condition) {
-    return;
+/* - Error Handling - */
+
+/* + file_selector_web + */
+
+/* https://github.com/flutter/packages/blob/main/packages/file_selector/file_selector_platform_interface/lib/src/types/x_type_group.dart */
+
+// Copyright 2013 The Flutter Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+/// A set of allowed XTypes.
+class XTypeGroup {
+  /// Creates a new group with the given label and file extensions.
+  ///
+  /// A group with none of the type options provided indicates that any type is
+  /// allowed.
+  const XTypeGroup({
+    this.label,
+    List<String>? extensions,
+    this.mimeTypes,
+    List<String>? uniformTypeIdentifiers,
+    this.webWildCards,
+    @Deprecated('Use uniformTypeIdentifiers instead') List<String>? macUTIs,
+  }) : _extensions = extensions,
+       assert(
+         uniformTypeIdentifiers == null || macUTIs == null,
+         'Only one of uniformTypeIdentifiers or macUTIs can be non-null',
+       ),
+       uniformTypeIdentifiers = uniformTypeIdentifiers ?? macUTIs;
+
+  /// The 'name' or reference to this group of types.
+  final String? label;
+
+  /// The MIME types for this group.
+  final List<String>? mimeTypes;
+
+  /// The uniform type identifiers for this group
+  final List<String>? uniformTypeIdentifiers;
+
+  /// The web wild cards for this group (ex: image/*, video/*).
+  final List<String>? webWildCards;
+
+  final List<String>? _extensions;
+
+  /// The extensions for this group.
+  List<String>? get extensions {
+    return _removeLeadingDots(_extensions);
   }
-  throw JunctionException(message);
+
+  /// Converts this object into a JSON formatted object.
+  Map<String, dynamic> toJSON() {
+    return <String, dynamic>{
+      'label': label,
+      'extensions': extensions,
+      'mimeTypes': mimeTypes,
+      'uniformTypeIdentifiers': uniformTypeIdentifiers,
+      'webWildCards': webWildCards,
+      // This is kept for backwards compatibility with anything that was
+      // relying on it, including implementers of `MethodChannelFileSelector`
+      // (since toJSON is used in the method channel parameter serialization).
+      'macUTIs': uniformTypeIdentifiers,
+    };
+  }
+
+  /// True if this type group should allow any file.
+  bool get allowsAny {
+    return (extensions?.isEmpty ?? true) &&
+        (mimeTypes?.isEmpty ?? true) &&
+        (uniformTypeIdentifiers?.isEmpty ?? true) &&
+        (webWildCards?.isEmpty ?? true);
+  }
+
+  /// Returns the list of uniform type identifiers for this group
+  @Deprecated('Use uniformTypeIdentifiers instead')
+  List<String>? get macUTIs => uniformTypeIdentifiers;
+
+  static List<String>? _removeLeadingDots(List<String>? exts) => exts
+      ?.map((String ext) => ext.startsWith('.') ? ext.substring(1) : ext)
+      .toList();
 }
 
-/* - Error Handling - */
+/* - file_selector_web - */

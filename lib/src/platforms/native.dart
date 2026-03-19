@@ -1,9 +1,8 @@
 import 'dart:io';
-
 import 'shared.dart';
 
 const String _webUnsupportedMessage =
-    "Your app is running on a native platform, so it can only use native functionality!";
+    "Your program is running on a native platform, so it can only use native functionality!";
 
 /* + Reading + */
 sealed class CrossReadHandle<Data extends CrossFilesystemData> {
@@ -11,22 +10,23 @@ sealed class CrossReadHandle<Data extends CrossFilesystemData> {
 }
 
 class NativeReadHandle extends CrossReadHandle<CrossFilesystemData> {
-  final FileSystemEntity filesystemEntity;
+  final FileSystemEntity _filesystemEntity;
 
-  NativeReadHandle._({required this.filesystemEntity});
+  NativeReadHandle._({required FileSystemEntity filesystemEntity})
+    : _filesystemEntity = filesystemEntity;
 
-  static Future<NativeReadHandle> fromPath(CrossPath readLocation) async {
-    final readPath = readLocation.asString();
-    final type = await FileSystemEntity.type(readPath);
+  static Future<NativeReadHandle> fromPath(CrossPath path) async {
+    final pathString = path.asString();
+    final type = await FileSystemEntity.type(pathString);
 
     final filesystemEntity = switch (type) {
       FileSystemEntityType.notFound => throw JunctionException(
-        "Path not found: $readPath",
+        "Path not found: $pathString",
       ),
-      FileSystemEntityType.file => File(readPath),
-      FileSystemEntityType.directory => Directory(readPath),
+      FileSystemEntityType.file => File(pathString),
+      FileSystemEntityType.directory => Directory(pathString),
       _ => throw JunctionException(
-        "Unsupported file system entity type at: $readPath",
+        "Unsupported file system entity type at: $pathString",
       ),
     };
 
@@ -35,14 +35,14 @@ class NativeReadHandle extends CrossReadHandle<CrossFilesystemData> {
 
   @override
   Future<CrossFilesystemItem<CrossFilesystemData>> read() async {
-    return await readFilesystemItem(filesystemEntity);
+    return await _readFilesystemItem(_filesystemEntity);
   }
 
-  static Future<CrossFilesystemItem<CrossFilesystemData>> readFilesystemItem(
+  static Future<CrossFilesystemItem<CrossFilesystemData>> _readFilesystemItem(
     FileSystemEntity filesystemEntity,
   ) async {
-    final ioPath = filesystemEntity.path;
-    final filename = CrossPath.fromString(ioPath).basename();
+    final path = filesystemEntity.path;
+    final filename = CrossPath.fromString(path).basename();
 
     if (filesystemEntity is File) {
       return CrossInMemoryFile(
@@ -59,7 +59,7 @@ class NativeReadHandle extends CrossReadHandle<CrossFilesystemData> {
             await Future.wait(
               await filesystemEntity
                   .list(followLinks: false) // We don't handle links yet!
-                  .map(readFilesystemItem)
+                  .map(_readFilesystemItem)
                   .toList(),
             ),
           ),
@@ -67,7 +67,7 @@ class NativeReadHandle extends CrossReadHandle<CrossFilesystemData> {
       );
     }
 
-    throw JunctionException("Unsupported file system entity type at: $ioPath");
+    throw JunctionException("Unsupported file system entity type at: $path");
   }
 }
 
@@ -83,13 +83,16 @@ class WebOpfsReadHandle extends CrossReadHandle<CrossFilesystemData> {
 }
 
 class WebReadHandle extends CrossReadHandle<CrossFileData> {
-  factory WebReadHandle() {
-    throw UnsupportedError(_webUnsupportedMessage);
+  static Future<List<WebReadHandle>> showOpenFileDialog({
+    List<XTypeGroup>? accept,
+    bool multiple = false,
+  }) async {
+    throw UnimplementedError(_webUnsupportedMessage);
   }
 
   @override
   Future<CrossFilesystemItem<CrossFileData>> read() {
-    throw UnsupportedError(_webUnsupportedMessage);
+    throw UnimplementedError(_webUnsupportedMessage);
   }
 }
 /* - Reading - */
@@ -100,10 +103,10 @@ sealed class CrossWriteHandle<Data extends CrossFilesystemData> {
 }
 
 class NativeWriteHandle extends CrossWriteHandle<CrossFilesystemData> {
-  final CrossPath destinationFolder;
+  final CrossPath _destinationFolder;
 
-  // Private constructor so it can only be instantiated via fromPath
-  NativeWriteHandle._({required this.destinationFolder});
+  NativeWriteHandle._({required CrossPath destinationFolder})
+    : _destinationFolder = destinationFolder;
 
   static Future<NativeWriteHandle> fromPath(CrossPath destinationFolder) async {
     if ((await FileSystemEntity.type(destinationFolder.asString())) !=
@@ -116,41 +119,41 @@ class NativeWriteHandle extends CrossWriteHandle<CrossFilesystemData> {
     return NativeWriteHandle._(destinationFolder: destinationFolder);
   }
 
-  //
   @override
   Future<void> write(CrossFilesystemItem<CrossFilesystemData> item) async {
-    writeFilesystemItem(destinationFolder, item);
+    await _writeFilesystemItem(_destinationFolder, item);
   }
 
-  static Future<void> writeFilesystemItem(
+  static Future<void> _writeFilesystemItem(
     CrossPath folderParent,
-    CrossFilesystemItem<CrossFilesystemData> inMemoryItem,
+    CrossFilesystemItem<CrossFilesystemData> item,
   ) async {
-    final childPath = CrossPath([...folderParent, inMemoryItem.key]);
+    final childPath = CrossPath([...folderParent, item.key]);
     final childPathString = childPath.asString();
-    final data = inMemoryItem.value;
+    final data = item.value;
 
-    if (data is CrossFileData) {
-      final file = await File(childPathString).create(recursive: true);
+    switch (data) {
+      case CrossFileData(bytes: final bytes):
+        {
+          final file = await File(childPathString).create(recursive: true);
+          await file.writeAsBytes(bytes);
 
-      await file.writeAsBytes(data.bytes);
+          break;
+        }
 
-      return;
+      case CrossFolderData(children: final children):
+        {
+          await Directory(childPathString).create(recursive: true);
+
+          await Future.wait(
+            children.entries.map(
+              (child) => _writeFilesystemItem(childPath, child),
+            ),
+          );
+
+          break;
+        }
     }
-
-    if (data is CrossFolderData) {
-      await Directory(childPathString).create(recursive: true);
-
-      for (final child in data.children.entries) {
-        await writeFilesystemItem(childPath, child);
-      }
-
-      return;
-    }
-
-    throw JunctionException(
-      "Unsupported file system entity type at: $childPathString",
-    );
   }
 }
 
@@ -166,13 +169,13 @@ class WebOpfsWriteHandle extends CrossWriteHandle<CrossFilesystemData> {
 }
 
 class WebWriteHandle extends CrossWriteHandle<CrossFileData> {
-  factory WebWriteHandle() {
-    throw UnsupportedError(_webUnsupportedMessage);
+  static Future<WebWriteHandle> showSaveFileDialog() {
+    throw UnimplementedError(_webUnsupportedMessage);
   }
 
   @override
   Future<void> write(CrossFilesystemItem<CrossFileData> item) {
-    throw UnsupportedError(_webUnsupportedMessage);
+    throw UnimplementedError(_webUnsupportedMessage);
   }
 }
 /* - Writing - */

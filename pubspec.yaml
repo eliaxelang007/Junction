@@ -1,7 +1,7 @@
 name: junction
-description: A starting point for Dart libraries or applications.
-version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+description: Junction is a library that provides an API for working with the filesystem in both web and native environments!
+version: 1.1.0
+repository: https://github.com/eliaxelang007/Junction
 
 environment:
   sdk: ^3.11.1
@@ -9,6 +9,7 @@ environment:
 # Add regular dependencies here.
 dependencies:
   path: ^1.9.1
+  web: ^1.1.1
 
   # file_selector: ^1.1.0
   # cross_file: ^0.3.5+2
