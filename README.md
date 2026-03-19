@@ -13,6 +13,7 @@ Junction is a library that provides an API for working with the filesystem in bo
 ```dart
 final newFile = CrossInMemoryFile(
     name: CrossFilesystemName("settings.json"),
+    // This line is convenience for CrossFileData(bytes: utf8.encode(jsonEncode(json)))
     data: CrossFileData.fromJson({"theme": "dark", "version": "1.0.0"}),
 );
 
@@ -50,6 +51,7 @@ final appFolder = CrossPath.fromString("C:/Example/Folder/Path");
 
 final mySettings = CrossInMemoryFile(
     name: CrossFilesystemName("settings.json"),
+    // This line is convenience for CrossFileData(bytes: utf8.encode(jsonEncode(json)))
     data: CrossFileData.fromJson({"theme": "dark", "version": "1.0.0"}),
 );
 
@@ -86,6 +88,7 @@ final appFolder = CrossPath.fromStrings(["Example", "Folder", "Path"]);
 
 final mySettings = CrossInMemoryFile(
     name: CrossFilesystemName("settings.json"),
+    // This line is convenience for CrossFileData(bytes: utf8.encode(jsonEncode(json)))
     data: CrossFileData.fromJson({"theme": "dark", "version": "1.0.0"}),
 );
 

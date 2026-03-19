@@ -1,3 +1,7 @@
+# 1.1.2
+
+- Edited readme.
+
 # 1.1.1
 
 - Edited examples.
