@@ -1,6 +1,6 @@
 ## Junction
 
-Junction is a Dart library that provides an API for working with the native filesystem, the web filesystem, and web origin private file filesystem (OPFS)!
+Junction is a pure Dart library (no Flutter SDK required) that provides an API for working with the native filesystem, the web filesystem, and web origin private file filesystem (OPFS)!
 
 ## Usage
 
